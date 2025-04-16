@@ -1,34 +1,67 @@
-# 🧾 Smart Invoice
+# 🧠 Smart Invoice
 
-Este es un proyecto backend construido con **FastAPI** que permite procesar facturas en imagen (fotos o escaneos) mediante **OCR con Tesseract**, extraer datos como proveedor, fecha, total e ítems, y guardarlos en una base de datos PostgreSQL.
+Sistema inteligente de carga y gestión de facturas a partir de imágenes o fotos, usando OCR y FastAPI.
 
----
+## ⚙️ Tecnologías
 
-## 🚀 Características principales
+- 🐍 Python 3.13
+- 🚀 FastAPI
+- 📦 SQLAlchemy
+- 🧠 Tesseract OCR (temporalmente para lectura de texto en imágenes)
+- 🐘 PostgreSQL
+- 📄 Pydantic v2
+- 📋 Uvicorn para desarrollo local
 
-- 📸 Carga de imágenes de facturas vía endpoint `/upload-invoice`
-- 🧠 Extracción automática de:
-  - Texto completo
-  - Proveedor
-  - Fecha
-  - Total
-  - Lista de ítems (productos + cantidad + precio)
-- 🗄️ Guardado en base de datos relacional PostgreSQL
-- 🧪 Documentación automática en `/docs`
+## 🧠 ¿Qué hace?
 
----
+Permite subir una imagen con una factura y:
 
-## 📦 Requisitos
+- Extrae texto con OCR.
+- Detecta el proveedor, fecha, total e ítems de la factura.
+- Guarda los datos estructurados en la base de datos.
+- Permite consultar, editar y eliminar facturas e ítems vía endpoints REST.
 
-- Python 3.8+
-- PostgreSQL
-- Tesseract OCR instalado y agregado al PATH
+## 📁 Estructura del proyecto
 
----
+```
+smart-invoice/
+├── app/
+│   ├── routes/
+│   ├── models.py
+│   ├── schemas.py
+│   ├── services/
+│   ├── repositories/
+│   ├── ocr.py
+│   ├── database.py
+│   └── main.py
+├── requirements.txt
+└── README.md
+```
 
-## 🛠 Instalación
+## 🚀 Cómo levantar el proyecto
 
-1. Cloná el repo:
-   ```bash
-   git clone https://github.com/tu_usuario/smart-invoice.git
-   cd smart-invoice
+1. Crear entorno virtual e instalar dependencias:
+```bash
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+2. Correr servidor local:
+```bash
+uvicorn app.main:app --reload
+```
+
+3. Entrar a Swagger:
+```
+http://localhost:8000/docs
+```
+
+## ✅ Endpoints disponibles
+
+- `POST /upload-invoice/`: Cargar factura desde imagen.
+- `GET /invoices/{id}`: Obtener factura por ID.
+- `DELETE /invoices/{id}`: Eliminar factura.
+- `PUT /invoices/{id}/items`: Actualizar ítems de una factura.
+
+> Más endpoints vendrán con la gestión de proveedores, clientes, exportaciones, etc.

@@ -10,6 +10,9 @@ class Invoice(Base):
     total = Column(Float)
     date = Column(String)
 
+    items = relationship("InvoiceItem",back_populates="invoice",cascade="all, delete", lazy="joined")
+
+
 class InvoiceItem(Base):
     __tablename__ = "invoice_items"
     id = Column(Integer, primary_key=True, index=True)
@@ -18,5 +21,6 @@ class InvoiceItem(Base):
     quantity = Column(Integer)
     price = Column(Float)
 
-    invoice = relationship("Invoice", backref="items")
+    invoice = relationship("Invoice", back_populates="items")
+
 

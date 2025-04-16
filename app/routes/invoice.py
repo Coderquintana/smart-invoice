@@ -1,12 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models import Invoice
-from app.schemas import InvoiceCreate
-from app.ocr import extract_text_from_image, parse_invoice_data
-from app.ocr import extract_items_from_text
-from app.models import InvoiceItem
-
+from app.services.invoice_service import fetch_all_invoices, process_invoice, fetch_invoice_by_id, delete_invoice, update_invoice, update_items
+from app.schemas import InvoiceOut, InvoiceUpdate, InvoiceItemsUpdate
 
 router = APIRouter()
 
@@ -17,38 +14,41 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/upload-invoice/")
+@router.post("/upload-invoice/", response_model=InvoiceOut)
 async def upload_invoice(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    content = await file.read()
-    text = extract_text_from_image(content)
-    parsed = parse_invoice_data(text)
+    return await process_invoice(file, db)
 
-    # ejemplo simple de extracción "manual"
-    invoice_data = Invoice(provider=parsed["provider"],total=parsed["total"],date=parsed["date"])
+@router.get("/invoices/{invoice_id}", response_model=InvoiceOut)
+def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
+    invoice = fetch_invoice_by_id(invoice_id, db)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return invoice
 
-    db.add(invoice_data)
-    db.commit()       # guarda la factura y genera el ID
-    db.refresh(invoice_data)  # asegura que invoice_data.id esté disponible
+@router.get("/invoices", response_model=list[InvoiceOut])
+def list_invoices(db: Session = Depends(get_db)):
+    return fetch_all_invoices(db)
 
-    items_data = extract_items_from_text(text)
+@router.delete("/invoices/{invoice_id}")
+def delete_invoice_endpoint(invoice_id: int, db: Session = Depends(get_db)):
+    deleted = delete_invoice(invoice_id, db)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return JSONResponse(content={"message": f"Invoice {invoice_id} deleted successfully"})
 
-    for item in items_data:
-        invoice_item = InvoiceItem(
-            invoice_id=invoice_data.id,
-            description=item["description"],
-            quantity=item["quantity"],
-            price=item["price"]
-        )
-        db.add(invoice_item)
-    db.commit()
+@router.put("/invoices/{invoice_id}", response_model=InvoiceOut)
+def update_invoice_endpoint(invoice_id: int, data: InvoiceUpdate, db: Session = Depends(get_db)):
+    updated = update_invoice(invoice_id, data, db)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return InvoiceOut.model_validate(updated, from_attributes=True)
 
-    return {
-    "extracted_text": text,
-    "items_detected": items_data,
-    "saved_invoice": {
-        "id": invoice_data.id,
-        "provider": invoice_data.provider,
-        "total": invoice_data.total,
-        "date": invoice_data.date
-    }
-}
+from app.schemas import InvoiceItemsUpdate
+
+@router.put("/invoices/{invoice_id}/items", response_model=InvoiceOut)
+def update_invoice_items_endpoint(invoice_id: int, data: InvoiceItemsUpdate, db: Session = Depends(get_db)):
+    updated_invoice = update_items(invoice_id, data, db)
+    if not updated_invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    return InvoiceOut.model_validate(updated_invoice, from_attributes=True)
